@@ -3,18 +3,20 @@
 // Makes Photoshop the active application
 app.bringToFront()
 
-function main(){
-    var doc = activeDocument;
-    var originPath = activeDocument.path;
-    var outFolder = new Folder(originPath + "/out");
-	var iosFolder = new Folder(originPath + "/out/iPhone_assets");
-	var androidFolder = new Folder(originPath + "/out/Android_assets");
-	var androidXHDPIFolder = new Folder(originPath + "/out/Android_assets/XHDPI");
-	var androidLDPIFolder = new Folder(originPath + "/out/Android_assets/LDPI");
-	var androidMDPIFolder = new Folder(originPath + "/out/Android_assets/MDPI");
-	var androidHDPIFolder = new Folder(originPath + "/out/Android_assets/HDPI");
-	var macFolder = new Folder(originPath + "/out/Mac_assets");
+var doc = activeDocument;
+var originPath = activeDocument.path;
+// Get document name, without extension
+var fname = doc.name.match(/(.*)\.[^\.]+$/)[1];
+var outFolder = new Folder(originPath + "/out");
+var iosFolder = new Folder(originPath + "/out/" + fname + "_iPhone_assets");
+var androidFolder = new Folder(originPath + "/out/" + fname + "_Android_assets");
+var androidXHDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/XHDPI");
+var androidLDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/LDPI");
+var androidMDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/MDPI");
+var androidHDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/HDPI");
+var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
     
+function main(){
 	if (!outFolder.exists) {
         outFolder.create();
     }
@@ -37,7 +39,7 @@ function main(){
 
     lyrInfo += scan(doc);
 
-	// Resumes back to original ruler un:its
+	// Resumes back to original ruler units
 	preferences.rulerUnits = defaultRulerUnits;
 	// Writes stored layer info into single file
 	writeFile(lyrInfo, originPath + "/out/");
@@ -95,45 +97,45 @@ function scan(canvas){
 function saveLayer(lname, path, platform){
 	if(platform == undefined || platform == 'iOS'){
 		// save as Retina, i.e. the original size(dpi)
-		var saveRetinaFile = File(path + "/out/iPhone_assets/" + lname + "_x2.png");
+		var saveRetinaFile = File(path + "/out/" + fname + "_iPhone_assets/" + lname + "_x2.png");
 		SavePNG(saveRetinaFile);
 
 		// resize canvas to a quarter of its size
 		resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
-		var saveFile = File(path + "/out/iPhone_assets/" + lname + "_x1.png");
+		var saveFile = File(path + "/out/" + fname + "_iPhone_assets/" + lname + "_x1.png");
 		SavePNG(saveFile);
 		// resize back
 		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 	}
 
 	if(platform == undefined || platform == 'android'){
-		var saveXHDPI = File(path + "/out/Android_assets/XHDPI/" + lname + "_xhdpi.png");
+		var saveXHDPI = File(path + "/out/" + fname + "_Android_assets/XHDPI/" + lname + "_xhdpi.png");
 		SavePNG(saveXHDPI);
 
 		// resize canvas to HDPI
 		resize(0.75*activeDocument.width.value, 0.75*activeDocument.height.value);
-		var saveHDPI = File(path + "/out/Android_assets/HDPI/" + lname + "_hdpi.png");
+		var saveHDPI = File(path + "/out/" + fname + "_Android_assets/HDPI/" + lname + "_hdpi.png");
 		SavePNG(saveHDPI);
 		// resize back
 		resize(4.0/3*activeDocument.width.value, 4.0/3*activeDocument.height.value);
 
 		// resize canvas to MDPI
 		resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
-		var saveMDPI = File(path + "/out/Android_assets/MDPI/" + lname + "_mdpi.png");
+		var saveMDPI = File(path + "/out/" + fname + "_Android_assets/MDPI/" + lname + "_mdpi.png");
 		SavePNG(saveMDPI);
 		// resize back
 		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 
 		// resize canvas to LDPI
 		resize(0.375*activeDocument.width.value, 0.375*activeDocument.height.value);
-		var saveLDPI = File(path + "/out/Android_assets/LDPI/" + lname + "_ldpi.png");
+		var saveLDPI = File(path + "/out/" + fname + "_Android_assets/LDPI/" + lname + "_ldpi.png");
 		SavePNG(saveLDPI);
 		// resize back
 		resize(8.0/3*activeDocument.width.value, 8.0/3*activeDocument.height.value);
 	}
 
 	if(platform == undefined || platform == 'Mac'){
-		var saveMac = File(path + "/out/Mac_assets/" + lname + ".png"); 
+		var saveMac = File(path + "/out/" + fname + "_Mac_assets/" + lname + ".png"); 
 		SavePNG(saveMac);
 	}
 	// Reverts to original state
