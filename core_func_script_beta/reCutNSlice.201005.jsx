@@ -3,6 +3,16 @@
 // Makes Photoshop the active application
 app.bringToFront()
 
+// prototype-function for array indexOf method, which is not supported in ExtendedScript
+Array.prototype.indexOf = function ( item ) {
+    var index = 0, length = this.length;
+    for ( ; index < length; index++ ) {
+        if ( this[index] === item )
+        return index;
+    }
+    return -1;
+};
+
 // Global variables
 var doc = activeDocument;
 var originPath = activeDocument.path;
@@ -16,17 +26,23 @@ var androidLDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_asse
 var androidMDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/MDPI");
 var androidHDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/HDPI");
 var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
+// Array platform in ['ios', 'android', 'macos']
+var platform;
+// Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
+var resolution;
     
 function main(){
     if (!outFolder.exists) outFolder.create();
     var savedState = app.activeDocument.activeHistoryState;
 	
 	// Stores saved layer info: name, coordinates, width and height
-	var lyrInfo = "NAME, COORDINATE, WIDTH, HEIGHT\n";
+	var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
 	
 	// Define pixels as unit of measurement
 	var defaultRulerUnits = preferences.rulerUnits;
 	preferences.rulerUnits = Units.PIXELS;
+
+	platform = ['ios', 'macos']
 
     lyrInfo += scan(doc);
 
@@ -54,7 +70,7 @@ function scan(canvas){
 			lyrInfo += recordLayerInfo(layer);
 			// Prepare layer for possible trim and resize defined by the Shape layer within it
 			prepare(layer, false, true);
-			saveLayer(layer.name, platform, resolution);
+			saveLayer(layer.name);
 		} else if (layer.name.slice(-4) == "_BTN"){
 			// current layer is a Button group
 			// Collect about-to-be-exported layer information
@@ -65,7 +81,7 @@ function scan(canvas){
 				if (layer.layers[k].name.match(regex) != null){
 					// Prepare layer for possible trim and resize defined by the Shape layer within it
 					prepare(layer.layers[k], true, true);
-					saveLayer(layer.name+"."+layer.layers[k].name, platform, resolution);
+					saveLayer(layer.name+"."+layer.layers[k].name);
 				}
 			}
 		} else {
@@ -79,15 +95,19 @@ function scan(canvas){
 		if(canvas.artLayers[j].name.substr(-1) == "@"){
 			lyrInfo += recordLayerInfo(layer);
 			prepare(layer, false, false);
-			saveLayer(canvas.artLayers[j].name, platform, resolution);
+			saveLayer(canvas.artLayers[j].name);
 		}
 	}
 
 	return lyrInfo;
 }
 
-function saveLayer(lname, platform, resolution){
-
+function saveLayer(lname){
+    /*
+    * JavaScript supports indexOf method for Array,
+    * but Adobe's ExtendedScript engine is out of date to support this method
+    * prototype-function added atop
+    */
 	if(platform == undefined || platform.indexOf('ios') != -1){
 	    if (!iosFolder.exists) iosFolder.create();
 
@@ -269,7 +289,7 @@ function writeFile(lyrInfo, path) {
 	}
 	
 	try {
-		var f = new File(path + "/saved_layers_info.txt");
+		var f = new File(path + "/" + fname + "_exported_assets_info.txt");
 		f.remove();
 		f.open('a');
 		f.linefeed = fileLineFeed;
