@@ -3,6 +3,7 @@
 // Makes Photoshop the active application
 app.bringToFront()
 
+/****************************************/
 // prototype-function for array indexOf method, which is not supported in ExtendedScript
 Array.prototype.indexOf = function ( item ) {
     var index = 0, length = this.length;
@@ -12,6 +13,7 @@ Array.prototype.indexOf = function ( item ) {
     }
     return -1;
 };
+/****************************************/
 
 // Global variables
 var doc = activeDocument;
@@ -31,7 +33,7 @@ var platform;
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 var resolution;
     
-function main(){
+function exportAll(){
     if (!outFolder.exists) outFolder.create();
     var savedState = app.activeDocument.activeHistoryState;
 	
@@ -42,8 +44,6 @@ function main(){
 	var defaultRulerUnits = preferences.rulerUnits;
 	preferences.rulerUnits = Units.PIXELS;
 
-	platform = ['ios', 'macos']
-
     lyrInfo += scan(doc);
 
 	// Resumes back to original ruler units
@@ -53,8 +53,6 @@ function main(){
 
     app.activeDocument.activeHistoryState = savedState;
 }
-
-main();
 
 // Scan layer sets to prepare for exporting
 function scan(canvas){
