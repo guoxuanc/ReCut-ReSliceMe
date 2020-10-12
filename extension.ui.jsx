@@ -3,6 +3,19 @@
 // Makes Photoshop the active application
 app.bringToFront()
 
+/****************************************/
+// prototype-function for array indexOf method, which is not supported in ExtendedScript
+Array.prototype.indexOf = function ( item ) {
+    var index = 0, length = this.length;
+    for ( ; index < length; index++ ) {
+        if ( this[index] === item )
+        return index;
+    }
+    return -1;
+};
+/****************************************/
+
+// Global variables
 var doc = activeDocument;
 var originPath = activeDocument.path;
 // Get document name, without extension
@@ -15,23 +28,17 @@ var androidLDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_asse
 var androidMDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/MDPI");
 var androidHDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/HDPI");
 var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
+// Array platform in ['ios', 'android', 'macos']
+var platform;
+// Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
+var resolution;
     
-function main(){
-	if (!outFolder.exists) {
-        outFolder.create();
-    }
-	if (!iosFolder.exists) iosFolder.create();
-	if (!androidFolder.exists) androidFolder.create();
-	if (!androidXHDPIFolder.exists) androidXHDPIFolder.create();
-	if (!androidHDPIFolder.exists) androidHDPIFolder.create();
-	if (!androidMDPIFolder.exists) androidMDPIFolder.create();
-	if (!androidLDPIFolder.exists) androidLDPIFolder.create();
-	if (!macFolder.exists) macFolder.create();
-
+function exportAll(){
+    if (!outFolder.exists) outFolder.create();
     var savedState = app.activeDocument.activeHistoryState;
 	
 	// Stores saved layer info: name, coordinates, width and height
-	var lyrInfo = "NAME, COORDINATE, WIDTH, HEIGHT\n";
+	var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
 	
 	// Define pixels as unit of measurement
 	var defaultRulerUnits = preferences.rulerUnits;
@@ -47,12 +54,11 @@ function main(){
     app.activeDocument.activeHistoryState = savedState;
 }
 
-//main();
-
 // Scan layer sets to prepare for exporting
 function scan(canvas){
 	var lyrInfo = "";
-	var docPath = activeDocument.path;
+	//var docPath = activeDocument.path;
+
 	// Scan layer group inside the canvas
 	for(var i=0; i<canvas.layerSets.length; i++){
 		var layer = canvas.layerSets[i];
@@ -62,7 +68,7 @@ function scan(canvas){
 			lyrInfo += recordLayerInfo(layer);
 			// Prepare layer for possible trim and resize defined by the Shape layer within it
 			prepare(layer, false, true);
-			saveLayer(layer.name, docPath);
+			saveLayer(layer.name);
 		} else if (layer.name.slice(-4) == "_BTN"){
 			// current layer is a Button group
 			// Collect about-to-be-exported layer information
@@ -73,7 +79,7 @@ function scan(canvas){
 				if (layer.layers[k].name.match(regex) != null){
 					// Prepare layer for possible trim and resize defined by the Shape layer within it
 					prepare(layer.layers[k], true, true);
-					saveLayer(layer.name+"."+layer.layers[k].name, docPath);
+					saveLayer(layer.name+"."+layer.layers[k].name);
 				}
 			}
 		} else {
@@ -87,55 +93,79 @@ function scan(canvas){
 		if(canvas.artLayers[j].name.substr(-1) == "@"){
 			lyrInfo += recordLayerInfo(layer);
 			prepare(layer, false, false);
-			saveLayer(canvas.artLayers[j].name, docPath);
+			saveLayer(canvas.artLayers[j].name);
 		}
 	}
 
 	return lyrInfo;
 }
 
-function saveLayer(lname, path, platform){
-	if(platform == undefined || platform == 'iOS'){
+function saveLayer(lname){
+    /*
+    * JavaScript supports indexOf method for Array,
+    * but Adobe's ExtendedScript engine is out of date to support this method
+    * prototype-function added atop
+    */
+	if(platform == undefined || platform.indexOf('ios') != -1){
+	    if (!iosFolder.exists) iosFolder.create();
+
 		// save as Retina, i.e. the original size(dpi)
-		var saveRetinaFile = File(path + "/out/" + fname + "_iPhone_assets/" + lname + "_x2.png");
+		var saveRetinaFile = File(iosFolder + "/" + lname + "_x2.png");
 		SavePNG(saveRetinaFile);
 
 		// resize canvas to a quarter of its size
 		resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
-		var saveFile = File(path + "/out/" + fname + "_iPhone_assets/" + lname + "_x1.png");
+		var saveFile = File(iosFolder + "/" + lname + "_x1.png");
 		SavePNG(saveFile);
+
 		// resize back
 		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 	}
 
-	if(platform == undefined || platform == 'android'){
-		var saveXHDPI = File(path + "/out/" + fname + "_Android_assets/XHDPI/" + lname + "_xhdpi.png");
-		SavePNG(saveXHDPI);
+	if(platform == undefined || platform.indexOf('android') != -1){
+	    if (!androidFolder.exists) androidFolder.create();
 
-		// resize canvas to HDPI
-		resize(0.75*activeDocument.width.value, 0.75*activeDocument.height.value);
-		var saveHDPI = File(path + "/out/" + fname + "_Android_assets/HDPI/" + lname + "_hdpi.png");
-		SavePNG(saveHDPI);
-		// resize back
-		resize(4.0/3*activeDocument.width.value, 4.0/3*activeDocument.height.value);
+	    // save original size as XHDPI
+	    if (resolution == undefined || resolution.indexOf('xhdpi')) {
+	        if (!androidXHDPIFolder.exists) androidXHDPIFolder.create();
+	        var saveXHDPI = File(androidXHDPIFolder + "/" + lname + "_xhdpi.png");
+	        SavePNG(saveXHDPI);
+	    }
 
-		// resize canvas to MDPI
-		resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
-		var saveMDPI = File(path + "/out/" + fname + "_Android_assets/MDPI/" + lname + "_mdpi.png");
-		SavePNG(saveMDPI);
-		// resize back
-		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
+		if (resolution == undefined || resolution.indexOf('hdpi')) {
+		    if (!androidHDPIFolder.exists) androidHDPIFolder.create();
+		    // resize canvas to HDPI
+		    resize(0.75*activeDocument.width.value, 0.75*activeDocument.height.value);
+		    var saveHDPI = File(androidHDPIFolder + "/" + lname + "_hdpi.png");
+		    SavePNG(saveHDPI);
+		    // resize back
+		    resize(4.0/3*activeDocument.width.value, 4.0/3*activeDocument.height.value);
+		}
 
-		// resize canvas to LDPI
-		resize(0.375*activeDocument.width.value, 0.375*activeDocument.height.value);
-		var saveLDPI = File(path + "/out/" + fname + "_Android_assets/LDPI/" + lname + "_ldpi.png");
-		SavePNG(saveLDPI);
-		// resize back
-		resize(8.0/3*activeDocument.width.value, 8.0/3*activeDocument.height.value);
+        if (resolution == undefined || resolution.indexOf('mdpi')) {
+   	        if (!androidMDPIFolder.exists) androidMDPIFolder.create();
+		    // resize canvas to MDPI
+		    resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
+		    var saveMDPI = File(androidMDPIFolder + "/" + lname + "_mdpi.png");
+		    SavePNG(saveMDPI);
+		    // resize back
+		    resize(2*activeDocument.width.value, 2*activeDocument.height.value);
+		}
+
+        if (resolution == undefined || resolution.indexOf('ldpi')) {
+            if (!androidLDPIFolder.exists) androidLDPIFolder.create();
+		    // resize canvas to LDPI
+		    resize(0.375*activeDocument.width.value, 0.375*activeDocument.height.value);
+		    var saveLDPI = File(androidLDPIFolder + "/" + lname + "_ldpi.png");
+		    SavePNG(saveLDPI);
+		    // resize back
+		    resize(8.0/3*activeDocument.width.value, 8.0/3*activeDocument.height.value);
+		}
 	}
 
-	if(platform == undefined || platform == 'Mac'){
-		var saveMac = File(path + "/out/" + fname + "_Mac_assets/" + lname + ".png"); 
+	if(platform == undefined || platform.indexOf('macos') != -1){
+	    if (!macFolder.exists) macFolder.create();
+		var saveMac = File(macFolder + "/" + lname + ".png");
 		SavePNG(saveMac);
 	}
 	// Reverts to original state
@@ -257,7 +287,7 @@ function writeFile(lyrInfo, path) {
 	}
 	
 	try {
-		var f = new File(path + "/saved_layers_info.txt");
+		var f = new File(path + "/" + fname + "_exported_assets_info.txt");
 		f.remove();
 		f.open('a');
 		f.linefeed = fileLineFeed;
@@ -402,8 +432,11 @@ function get_platform_list (platform_btns) {
 }
 
 button1.onClick = function() {
+    platform = get_platform_list ([iconbutton1, iconbutton2, iconbutton3]);
+    resolution = selected_rbutton (group1);
     alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
-    main();
+    alert(selected_rbutton (group1).toString());
+    exportAll();
 };
 
 dialog.show();
