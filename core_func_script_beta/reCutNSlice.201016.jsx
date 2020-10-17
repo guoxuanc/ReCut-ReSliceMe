@@ -29,7 +29,7 @@ var androidMDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_asse
 var androidHDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/HDPI");
 var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
 // Array platform in ['ios', 'android', 'macos']
-var platform;
+var platform = [];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 var resolution;
     
@@ -53,6 +53,65 @@ function exportAll(){
 
     app.activeDocument.activeHistoryState = savedState;
 }
+
+function exportSelected(){
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+	// Stores saved layer info: name, coordinates, width and height
+	var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+
+	// Define pixels as unit of measurement
+	var defaultRulerUnits = preferences.rulerUnits;
+	preferences.rulerUnits = Units.PIXELS;
+
+    var selectLayers = getSelectedLayersId();
+    if (selectLayers == null || selectLayers.length == 0) {
+        alert("NO_LAYER_SELECTED");
+        return;
+    }
+
+    lyrInfo += scanLayersList(selectLayers);
+
+	// Resumes back to original ruler units
+	preferences.rulerUnits = defaultRulerUnits;
+	// Writes stored layer info into single file
+	writeFile(lyrInfo, originPath + "/out/");
+
+    app.activeDocument.activeHistoryState = savedState;
+}
+
+function scanLayersList(layers) {
+    var lyrInfo = "";
+    for (var i = 0; i < layers.length; i++){
+        setSelectedLayers(layers[i]);
+        var layer = activeDocument.activeLayer;
+        lyrInfo += recordLayerInfo(layer);
+        prepare(layer, false, true);
+        saveLayer(layer.name);
+    }
+    return lyrInfo;
+}
+
+function setPlatform(newPlatform){
+    platform = [];
+    if (newPlatform.constructor != Array) {
+        newPlatform = [newPlatform];
+    }
+    if (newPlatform.indexOf('ios') != -1) platform.push('ios');
+    if (newPlatform.indexOf('android') != -1) platform.push('android');
+    if (newPlatform.indexOf('macos') != -1) platform.push('macos');
+};
+
+///////////////////// TESTING ////////////////////////
+/*
+// Array platform in ['ios', 'android', 'macos']
+platform = ['android', 'macos'];
+// Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
+resolution = ['xhdpi'];
+exportSelected();
+*/
+///////////////////////////////////////////////////////
 
 // Scan layer sets to prepare for exporting
 function scan(canvas){
@@ -106,7 +165,7 @@ function saveLayer(lname){
     * but Adobe's ExtendedScript engine is out of date to support this method
     * prototype-function added atop
     */
-	if(platform == undefined || platform.indexOf('ios') != -1){
+	if(platform == [] || platform.indexOf('ios') != -1){
 	    if (!iosFolder.exists) iosFolder.create();
 
 		// save as Retina, i.e. the original size(dpi)
@@ -122,17 +181,17 @@ function saveLayer(lname){
 		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 	}
 
-	if(platform == undefined || platform.indexOf('android') != -1){
+	if(platform == [] || platform.indexOf('android') != -1){
 	    if (!androidFolder.exists) androidFolder.create();
 
 	    // save original size as XHDPI
-	    if (resolution == undefined || resolution.indexOf('xhdpi')) {
+	    if (resolution == undefined || resolution.indexOf('xhdpi') != -1) {
 	        if (!androidXHDPIFolder.exists) androidXHDPIFolder.create();
 	        var saveXHDPI = File(androidXHDPIFolder + "/" + lname + "_xhdpi.png");
 	        SavePNG(saveXHDPI);
 	    }
 
-		if (resolution == undefined || resolution.indexOf('hdpi')) {
+		if (resolution == undefined || resolution.indexOf('hdpi') != -1) {
 		    if (!androidHDPIFolder.exists) androidHDPIFolder.create();
 		    // resize canvas to HDPI
 		    resize(0.75*activeDocument.width.value, 0.75*activeDocument.height.value);
@@ -142,7 +201,7 @@ function saveLayer(lname){
 		    resize(4.0/3*activeDocument.width.value, 4.0/3*activeDocument.height.value);
 		}
 
-        if (resolution == undefined || resolution.indexOf('mdpi')) {
+        if (resolution == undefined || resolution.indexOf('mdpi') != -1) {
    	        if (!androidMDPIFolder.exists) androidMDPIFolder.create();
 		    // resize canvas to MDPI
 		    resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
@@ -152,7 +211,7 @@ function saveLayer(lname){
 		    resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 		}
 
-        if (resolution == undefined || resolution.indexOf('ldpi')) {
+        if (resolution == undefined || resolution.indexOf('ldpi') != -1) {
             if (!androidLDPIFolder.exists) androidLDPIFolder.create();
 		    // resize canvas to LDPI
 		    resize(0.375*activeDocument.width.value, 0.375*activeDocument.height.value);
@@ -163,7 +222,7 @@ function saveLayer(lname){
 		}
 	}
 
-	if(platform == undefined || platform.indexOf('macos') != -1){
+	if(platform == [] || platform.indexOf('macos') != -1){
 	    if (!macFolder.exists) macFolder.create();
 		var saveMac = File(macFolder + "/" + lname + ".png");
 		SavePNG(saveMac);
@@ -296,3 +355,100 @@ function writeFile(lyrInfo, path) {
 	} catch(e) {}
 
 }
+
+// return an array of layers' id that are being selected
+function getSelectedLayersId()
+{
+    var selectedLayers = [];
+    try {
+        var targetLayersTypeId = stringIDToTypeID("targetLayers");
+        var selectedLayersReference = new ActionReference();
+        selectedLayersReference.putProperty(charIDToTypeID("Prpr"), targetLayersTypeId);
+        selectedLayersReference.putEnumerated(charIDToTypeID("Dcmn"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        var descriptor = executeActionGet(selectedLayersReference);
+        if (descriptor.hasKey(targetLayersTypeId) == false) {
+            selectedLayersReference = new ActionReference();
+            selectedLayersReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("LyrI"));
+            selectedLayersReference.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+            descriptor = executeActionGet(selectedLayersReference);
+            var id = descriptor.getInteger(charIDToTypeID("LyrI"));
+            if (isVisiblebyId(id)) {
+                selectedLayers.push(id);
+            }
+        } else {
+            var hasBackground = hasBackgroundLayer() ? 0 : 1;
+            var list = descriptor.getList(targetLayersTypeId);
+            for (var i = 0; i < list.count; i++) {
+                var selectedLayerIndex = list.getReference(i).getIndex() + hasBackground;
+                var selectedLayersReference = new ActionReference();
+                selectedLayersReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("LyrI"));
+                selectedLayersReference.putIndex(charIDToTypeID("Lyr "), selectedLayerIndex);
+                descriptor = executeActionGet(selectedLayersReference);
+                var id = descriptor.getInteger(charIDToTypeID("LyrI"));
+                if (isVisiblebyId(id)) {
+                    selectedLayers.push(id);
+                }
+            }
+        }
+    } catch (ex) {
+        //console_error($.fileName, $.line, ex);
+    }
+    return selectedLayers;
+};
+
+// return if a layer is visible or not by passing the layer id
+function isVisiblebyId(id) {
+    var layerReference = new ActionReference();
+    layerReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Vsbl"));
+    layerReference.putIdentifier(charIDToTypeID("Lyr "), id);
+    var descriptor = executeActionGet(layerReference);
+    if (descriptor.hasKey(charIDToTypeID("Vsbl")) == false) {
+        return false;
+    }
+    return descriptor.getBoolean(charIDToTypeID("Vsbl"));
+};
+
+function hasBackgroundLayer() {
+    var backgroundReference = new ActionReference();
+    backgroundReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Bckg"));
+    backgroundReference.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Back"));
+    var backgroundDescriptor = executeActionGet(backgroundReference);
+    var hasBackground = backgroundDescriptor.getBoolean(charIDToTypeID("Bckg"));
+    if (hasBackground == false) {
+        try {
+            var layerReference = new ActionReference();
+            layerReference.putIndex(charIDToTypeID("Lyr "), 0);
+            var zero = executeActionGet(layerReference);
+            hasBackground = true;
+        } catch (ex) {
+
+        }
+    }
+    return hasBackground;
+};
+
+// return layer name by layer id
+function getLayerName(id) {
+    var layerReference = new ActionReference();
+    layerReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Nm  "));
+    layerReference.putIdentifier(charIDToTypeID("Lyr "), id);
+    var descriptor = executeActionGet(layerReference);
+    return descriptor.getString(charIDToTypeID("Nm  "));
+};
+
+// active layers by array of layers id
+function setSelectedLayers(layers) {
+    if (layers.constructor != Array) {
+        layers = [layers];
+    }
+    if (layers.length == 0) {
+        return;
+    }
+    var current = new ActionReference();
+    for (var i = 0; i < layers.length; i += 1) {
+        current.putIdentifier(charIDToTypeID("Lyr "), layers[i]);
+    }
+    var desc = new ActionDescriptor();
+    desc.putReference(charIDToTypeID("null"), current);
+    executeAction(charIDToTypeID("slct"), desc, DialogModes.NO);
+};
