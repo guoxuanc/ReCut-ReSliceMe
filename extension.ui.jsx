@@ -29,7 +29,7 @@ var androidMDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_asse
 var androidHDPIFolder = new Folder(originPath + "/out/" + fname + "_Android_assets/HDPI");
 var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
 // Array platform in ['ios', 'android', 'macos']
-var platform;
+var platform = [];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 var resolution;
     
@@ -53,6 +53,65 @@ function exportAll(){
 
     app.activeDocument.activeHistoryState = savedState;
 }
+
+function exportSelected(){
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+	// Stores saved layer info: name, coordinates, width and height
+	var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+
+	// Define pixels as unit of measurement
+	var defaultRulerUnits = preferences.rulerUnits;
+	preferences.rulerUnits = Units.PIXELS;
+
+    var selectLayers = getSelectedLayersId();
+    if (selectLayers == null || selectLayers.length == 0) {
+        alert("NO_LAYER_SELECTED");
+        return;
+    }
+
+    lyrInfo += scanLayersList(selectLayers);
+
+	// Resumes back to original ruler units
+	preferences.rulerUnits = defaultRulerUnits;
+	// Writes stored layer info into single file
+	writeFile(lyrInfo, originPath + "/out/");
+
+    app.activeDocument.activeHistoryState = savedState;
+}
+
+function scanLayersList(layers) {
+    var lyrInfo = "";
+    for (var i = 0; i < layers.length; i++){
+        setSelectedLayers(layers[i]);
+        var layer = activeDocument.activeLayer;
+        lyrInfo += recordLayerInfo(layer);
+        prepare(layer, false, true);
+        saveLayer(layer.name);
+    }
+    return lyrInfo;
+}
+
+function setPlatform(newPlatform){
+    platform = [];
+    if (newPlatform.constructor != Array) {
+        newPlatform = [newPlatform];
+    }
+    if (newPlatform.indexOf('ios') != -1) platform.push('ios');
+    if (newPlatform.indexOf('android') != -1) platform.push('android');
+    if (newPlatform.indexOf('macos') != -1) platform.push('macos');
+};
+
+///////////////////// TESTING ////////////////////////
+/*
+// Array platform in ['ios', 'android', 'macos']
+platform = ['android', 'macos'];
+// Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
+resolution = ['xhdpi'];
+exportSelected();
+*/
+///////////////////////////////////////////////////////
 
 // Scan layer sets to prepare for exporting
 function scan(canvas){
@@ -106,7 +165,7 @@ function saveLayer(lname){
     * but Adobe's ExtendedScript engine is out of date to support this method
     * prototype-function added atop
     */
-	if(platform == undefined || platform.indexOf('ios') != -1){
+	if(platform == [] || platform.indexOf('ios') != -1){
 	    if (!iosFolder.exists) iosFolder.create();
 
 		// save as Retina, i.e. the original size(dpi)
@@ -122,17 +181,17 @@ function saveLayer(lname){
 		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 	}
 
-	if(platform == undefined || platform.indexOf('android') != -1){
+	if(platform == [] || platform.indexOf('android') != -1){
 	    if (!androidFolder.exists) androidFolder.create();
 
 	    // save original size as XHDPI
-	    if (resolution == undefined || resolution.indexOf('xhdpi')) {
+	    if (resolution == undefined || resolution.indexOf('xhdpi') != -1) {
 	        if (!androidXHDPIFolder.exists) androidXHDPIFolder.create();
 	        var saveXHDPI = File(androidXHDPIFolder + "/" + lname + "_xhdpi.png");
 	        SavePNG(saveXHDPI);
 	    }
 
-		if (resolution == undefined || resolution.indexOf('hdpi')) {
+		if (resolution == undefined || resolution.indexOf('hdpi') != -1) {
 		    if (!androidHDPIFolder.exists) androidHDPIFolder.create();
 		    // resize canvas to HDPI
 		    resize(0.75*activeDocument.width.value, 0.75*activeDocument.height.value);
@@ -142,7 +201,7 @@ function saveLayer(lname){
 		    resize(4.0/3*activeDocument.width.value, 4.0/3*activeDocument.height.value);
 		}
 
-        if (resolution == undefined || resolution.indexOf('mdpi')) {
+        if (resolution == undefined || resolution.indexOf('mdpi') != -1) {
    	        if (!androidMDPIFolder.exists) androidMDPIFolder.create();
 		    // resize canvas to MDPI
 		    resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
@@ -152,7 +211,7 @@ function saveLayer(lname){
 		    resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 		}
 
-        if (resolution == undefined || resolution.indexOf('ldpi')) {
+        if (resolution == undefined || resolution.indexOf('ldpi') != -1) {
             if (!androidLDPIFolder.exists) androidLDPIFolder.create();
 		    // resize canvas to LDPI
 		    resize(0.375*activeDocument.width.value, 0.375*activeDocument.height.value);
@@ -163,7 +222,7 @@ function saveLayer(lname){
 		}
 	}
 
-	if(platform == undefined || platform.indexOf('macos') != -1){
+	if(platform == [] || platform.indexOf('macos') != -1){
 	    if (!macFolder.exists) macFolder.create();
 		var saveMac = File(macFolder + "/" + lname + ".png");
 		SavePNG(saveMac);
@@ -297,6 +356,103 @@ function writeFile(lyrInfo, path) {
 
 }
 
+// return an array of layers' id that are being selected
+function getSelectedLayersId()
+{
+    var selectedLayers = [];
+    try {
+        var targetLayersTypeId = stringIDToTypeID("targetLayers");
+        var selectedLayersReference = new ActionReference();
+        selectedLayersReference.putProperty(charIDToTypeID("Prpr"), targetLayersTypeId);
+        selectedLayersReference.putEnumerated(charIDToTypeID("Dcmn"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        var descriptor = executeActionGet(selectedLayersReference);
+        if (descriptor.hasKey(targetLayersTypeId) == false) {
+            selectedLayersReference = new ActionReference();
+            selectedLayersReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("LyrI"));
+            selectedLayersReference.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+            descriptor = executeActionGet(selectedLayersReference);
+            var id = descriptor.getInteger(charIDToTypeID("LyrI"));
+            if (isVisiblebyId(id)) {
+                selectedLayers.push(id);
+            }
+        } else {
+            var hasBackground = hasBackgroundLayer() ? 0 : 1;
+            var list = descriptor.getList(targetLayersTypeId);
+            for (var i = 0; i < list.count; i++) {
+                var selectedLayerIndex = list.getReference(i).getIndex() + hasBackground;
+                var selectedLayersReference = new ActionReference();
+                selectedLayersReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("LyrI"));
+                selectedLayersReference.putIndex(charIDToTypeID("Lyr "), selectedLayerIndex);
+                descriptor = executeActionGet(selectedLayersReference);
+                var id = descriptor.getInteger(charIDToTypeID("LyrI"));
+                if (isVisiblebyId(id)) {
+                    selectedLayers.push(id);
+                }
+            }
+        }
+    } catch (ex) {
+        //console_error($.fileName, $.line, ex);
+    }
+    return selectedLayers;
+};
+
+// return if a layer is visible or not by passing the layer id
+function isVisiblebyId(id) {
+    var layerReference = new ActionReference();
+    layerReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Vsbl"));
+    layerReference.putIdentifier(charIDToTypeID("Lyr "), id);
+    var descriptor = executeActionGet(layerReference);
+    if (descriptor.hasKey(charIDToTypeID("Vsbl")) == false) {
+        return false;
+    }
+    return descriptor.getBoolean(charIDToTypeID("Vsbl"));
+};
+
+function hasBackgroundLayer() {
+    var backgroundReference = new ActionReference();
+    backgroundReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Bckg"));
+    backgroundReference.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Back"));
+    var backgroundDescriptor = executeActionGet(backgroundReference);
+    var hasBackground = backgroundDescriptor.getBoolean(charIDToTypeID("Bckg"));
+    if (hasBackground == false) {
+        try {
+            var layerReference = new ActionReference();
+            layerReference.putIndex(charIDToTypeID("Lyr "), 0);
+            var zero = executeActionGet(layerReference);
+            hasBackground = true;
+        } catch (ex) {
+
+        }
+    }
+    return hasBackground;
+};
+
+// return layer name by layer id
+function getLayerName(id) {
+    var layerReference = new ActionReference();
+    layerReference.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Nm  "));
+    layerReference.putIdentifier(charIDToTypeID("Lyr "), id);
+    var descriptor = executeActionGet(layerReference);
+    return descriptor.getString(charIDToTypeID("Nm  "));
+};
+
+// active layers by array of layers id
+function setSelectedLayers(layers) {
+    if (layers.constructor != Array) {
+        layers = [layers];
+    }
+    if (layers.length == 0) {
+        return;
+    }
+    var current = new ActionReference();
+    for (var i = 0; i < layers.length; i += 1) {
+        current.putIdentifier(charIDToTypeID("Lyr "), layers[i]);
+    }
+    var desc = new ActionDescriptor();
+    desc.putReference(charIDToTypeID("null"), current);
+    executeAction(charIDToTypeID("slct"), desc, DialogModes.NO);
+};
+
 /*
 {"activeId":0,"items":{"item-0":{"id":0,"type":"Dialog","parentId":false,"style":{"enabled":true,"varName":null,"windowType":"Dialog","creationProps":{"su1PanelCoordinates":false,"maximizeButton":false,"minimizeButton":true,"independent":false,"closeButton":true,"borderless":false,"resizeable":false},"text":"ReCut&ReSlice Me","preferredSize":[220,300],"margins":15,"orientation":"column","spacing":10,"alignChildren":["center","top"]}},"item-2":{"id":2,"type":"IconButton","parentId":6,"style":{"enabled":true,"varName":null,"text":"","preferredSize":[73,0],"creationProps":{"style":"toolbutton","toggle":false},"iconButtonStroke":false,"image":["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAoCAYAAABw65OnAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMDE0IDc5LjE1Njc5NywgMjAxNC8wOC8yMC0wOTo1MzowMiAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MThEOENEN0M1QTgzMTFFNUJDMzY5QkExRkY1RkU5MjMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MThEOENEN0Q1QTgzMTFFNUJDMzY5QkExRkY1RkU5MjMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDowMDdCRDdGRjVBODMxMUU1QkMzNjlCQTFGRjVGRTkyMyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDowMDdCRDgwMDVBODMxMUU1QkMzNjlCQTFGRjVGRTkyMyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pp4OaOYAAAJhSURBVHjaxJdNSFRRFMdHDbSFCyXKDxIXLRQxCMuNLiRNkDDRZjGGC93owoW2UHShoLiQVlFibSLciORAH5vsA6oBkVr4hTBDUoISygxILXQUR/N/4Ty587q390bfO3Pgt5j73jx+3HvuufekBAfuelyIHOAD9SAM7oG/qheLhv2ecy4IDIEecJ5+f9EJGOG0xEdQbRqbs/pTqoMC0woBQ4xFohJ4FePb4BOXRL9mvBMccUikg5uK8QkwZecDTkhcBRmmsVHQavcDTuyOEmn9X4HHYDGRD9iRKASXQRqIgO/gQHo+C26Dt6Z6cEXUInAR/AZL4EciEpmUVCLjy0zPNsFn4AevwSohohw0gVpwTbNdxUy9sZJoBE/AJY1gLmgm1sEkiIEGUGoxqzWESNgWcKiS6AIPE1jOAtB3ijzyUS7VgV/y7qhKUOCsUUqzeLJFU6jscoZI6F55OcT6XmAU+EqlPq5YtTEK7JorrJDIAhWMEr0kEidRJl1A3I4oeKo6O4oZZ+GDURvMEvmMEiu6UzSTUWJfJ5HGKJGtk4gySlToJMKMEtdVOSgk1pjL9ahKYoVZooWO8ziJINhgFnkPbsgSh3Z6A4dDnNrfxO0tNOhNNQ6wF57kxBiYNyTegZ0kifwxJGJ0r0xGdMjXuwdJEAgUDftDskREdcy6HN2qNvA+LQ1HzIAFlcQeaGeSaPtfQ/ycLh9uhujutqy68gb5JYfjGRi304tGqa8MUEOsi3l6RwjngVsW18VH1OXZ7so3qEsS9eMOlVpj/CVV2WXF/+povWulmf4JRqiJ/ieOBRgAOI9xI/epCFkAAAAASUVORK5CYII="],"alignment":null,"helpTip":null}},"item-3":{"id":3,"type":"IconButton","parentId":6,"style":{"enabled":true,"varName":null,"text":"","preferredSize":[73,0],"creationProps":{"style":"toolbutton","toggle":false},"iconButtonStroke":false,"image":["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAApCAYAAAC/QpA/AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMDE0IDc5LjE1Njc5NywgMjAxNC8wOC8yMC0wOTo1MzowMiAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NDZCM0Y4OTk1QTgzMTFFNUJDMzY5QkExRkY1RkU5MjMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NDZCM0Y4OUE1QTgzMTFFNUJDMzY5QkExRkY1RkU5MjMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDoxOEQ4Q0Q4NjVBODMxMUU1QkMzNjlCQTFGRjVGRTkyMyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo0NkIzRjg5ODVBODMxMUU1QkMzNjlCQTFGRjVGRTkyMyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PnO69IYAAAKqSURBVHja7JhbSBZBFMd3V7M+LxVdhBLKsCCCBHsTukCB+RAVlJc3A6GHXqReEkMF6ynSeupCRSBBJII+Wm8lQYlkVqQlRh/4Fb1Ilmbl9X/grAzT7O7s9+1Ihgd+7MzszNk/M3PmsvZA/QlL07pAJ7hp6VslOA0OelXY2dS+kHZCOL4PboBMzfo2eAAe6n4gPaSYInAX1IBDoBDkg2zwC8TBG/AYNILr4JYJMWSt4BU4BmI+9f6ADLAvjPMww3QJ9HE6FlA3g5/doCVqMR3gAs+DLzwkfkbvP3P6LHgUlZg74DinP4DNYAeY9mlDcykPvOZ8ic5EDhJzAFQL+d/8HAFzPu2+8nNCKCsHR1IRc1XK7wYvwSewwqfdIOgFxQH+tKNpC4eybEUaQ7uJkW072AXehe2ZEsuMHU6mZ56BMwFzI6zZHO7ql8LeRL00ay2+pWF/mhGHqYmXchrL/VxWwVERNVXsfw8vovHBhpPN7jBR6NYLSp9wd9I6kmugJ2x+PgVZnD4HQXHqmVJFg5iwgkZtrt8sqXwviRn3iDLHkBgvvxNek3ZO6E5TwyTbrGP9Q7YsZlnMkhfjhAg/k2Y7fM34K+bBjKGPevnNdvioINskWGtIzBqP8l4Scw3cBj9BAhzllxsNiVknHLIS/N174Ip7uKL7cC34AaaELcGEuX7p1rkN5OA8Myqf9EYXaRKLfqdcIUGhvdKQmFXJrDM9hsQ8T0ZMP19Nv2mMv6Uxz8jPefAi2RWYIm0r33fKFO/p7FogcFFR5xS3Jz+XU/0l8p1RjTX9BPgo5BOKOu/BcNR70wZFWY6UX62os/6/37VtjTJbs13KYlTrTqbiiqO9rqQiZkhRNqCYrKrfI5GLoaipA2O8h9E/4VapThto5/djfG1+q/uBeQEGABeelma7Tob/AAAAAElFTkSuQmCC"],"alignment":null,"helpTip":null}},"item-4":{"id":4,"type":"IconButton","parentId":6,"style":{"enabled":true,"varName":null,"text":"","preferredSize":[73,0],"creationProps":{"style":"toolbutton","toggle":false},"iconButtonStroke":false,"image":["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACkAAAAlCAYAAADfosCNAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMDE0IDc5LjE1Njc5NywgMjAxNC8wOC8yMC0wOTo1MzowMiAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MThEOENEODA1QTgzMTFFNUJDMzY5QkExRkY1RkU5MjMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MThEOENEODE1QTgzMTFFNUJDMzY5QkExRkY1RkU5MjMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDoxOEQ4Q0Q3RTVBODMxMUU1QkMzNjlCQTFGRjVGRTkyMyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDoxOEQ4Q0Q3RjVBODMxMUU1QkMzNjlCQTFGRjVGRTkyMyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pr98mI4AAAE3SURBVHjaYrxeG+zMwMAwBYjFGAYf+ALEXSxAYgkQSzAMTiAECkCQI7mhAk+B+DAQMw4Cx/0DYn0g1gLiHyBHfgViXiA+AMQx9HaNRtMarOI36kKKgFQvEP9mQhLnGmRRzQ9jIDuScZA5kgmbIwctGHXkqCNHHTnqyFFHjjpy1JGjjhx15KgjqeXIv4PMbX+wOfLfYHUkC5KgCxCfordLgL1CbML/gVgGmyMFgdh0sKZJ5qGQcfgHuRt5QY5cPsgdeQmUJhMYIGNAMiRqNgDiABLUnwDiHSSoBw1WvAfiubCMM5cMHzqS6MgtQNyKLohrLIhaNQ6p45l8A1EtspConpPejlTCFnUEQCIQe9PLkeZAfBeI5UnUxwNNl7G0jjJ2BsjwNQh8JsODoFHledCcfptYTQABBgB8gCrw8RL/tQAAAABJRU5ErkJggg=="],"alignment":null,"helpTip":null}},"item-5":{"id":5,"type":"StaticText","parentId":0,"style":{"enabled":true,"varName":null,"creationProps":{"truncate":"none","multiline":false,"scrolling":false},"softWrap":false,"text":"ReCut&ReSlice","justify":"center","preferredSize":[220,0],"alignment":"center","helpTip":null}},"item-6":{"id":6,"type":"Group","parentId":0,"style":{"enabled":true,"varName":"Mode","preferredSize":[0,0],"margins":[6,0,0,0],"orientation":"row","spacing":10,"alignChildren":["left","center"],"alignment":null}},"item-7":{"id":7,"type":"Group","parentId":0,"style":{"enabled":true,"varName":"Export","preferredSize":[0,0],"margins":[10,0,0,0],"orientation":"row","spacing":10,"alignChildren":["left","center"],"alignment":null}},"item-8":{"id":8,"type":"Button","parentId":11,"style":{"enabled":true,"varName":null,"text":"ALL GROUPS","justify":"center","preferredSize":[110,0],"alignment":"center","helpTip":null}},"item-9":{"id":9,"type":"Button","parentId":11,"style":{"enabled":true,"varName":null,"text":"SUB GROUPS","justify":"center","preferredSize":[110,0],"alignment":"center","helpTip":null}},"item-10":{"id":10,"type":"Button","parentId":11,"style":{"enabled":true,"varName":null,"text":"SLC LAYERS","justify":"center","preferredSize":[110,0],"alignment":"center","helpTip":null}},"item-11":{"id":11,"type":"Group","parentId":7,"style":{"enabled":true,"varName":"ExportOption","preferredSize":[110,0],"margins":0,"orientation":"column","spacing":10,"alignChildren":["left","center"],"alignment":"fill"}},"item-12":{"id":12,"type":"IconButton","parentId":7,"style":{"enabled":true,"varName":null,"text":"Ratio","preferredSize":[100,100],"creationProps":{"style":"toolbutton","toggle":false},"iconButtonStroke":false,"image":[""],"alignment":null,"helpTip":null}},"item-13":{"id":13,"type":"Group","parentId":0,"style":{"enabled":true,"varName":"Resolution","preferredSize":[0,0],"margins":[14,2,2,2],"orientation":"row","spacing":10,"alignChildren":["center","center"],"alignment":null}},"item-14":{"id":14,"type":"RadioButton","parentId":16,"style":{"enabled":true,"varName":null,"text":"LDPI","preferredSize":[null,0],"alignment":null,"helpTip":null}},"item-15":{"id":15,"type":"RadioButton","parentId":16,"style":{"enabled":true,"varName":null,"text":"XHDPI","preferredSize":[0,0],"alignment":null,"helpTip":null}},"item-16":{"id":16,"type":"Group","parentId":13,"style":{"enabled":true,"varName":null,"preferredSize":[220,0],"margins":[0,0,0,0],"orientation":"row","spacing":4,"alignChildren":["left","center"],"alignment":null}},"item-18":{"id":18,"type":"RadioButton","parentId":16,"style":{"enabled":true,"varName":null,"text":"MDPI","preferredSize":[0,0],"alignment":null,"helpTip":null}},"item-19":{"id":19,"type":"RadioButton","parentId":16,"style":{"enabled":true,"varName":null,"text":"HDPI","preferredSize":[0,0],"alignment":null,"helpTip":null}}},"order":[0,5,6,2,3,4,7,11,8,9,10,12,13,16,14,15,18,19],"settings":{"importJSON":true,"indentSize":false,"cepExport":false,"includeCSSJS":true,"showDialog":true,"functionWrapper":false,"afterEffectsDockable":false,"itemReferenceList":"None"}}
 */ 
@@ -373,10 +529,10 @@ var button3 = ExportOption.add("button", undefined, undefined, {name: "button3"}
     
 // EXPORT
 // ======
-var iconbutton4 = Export.add("iconbutton", undefined, undefined, {name: "iconbutton4", style: "toolbutton"}); 
-    iconbutton4.text = "Ratio"; 
-    iconbutton4.preferredSize.width = 100; 
-    iconbutton4.preferredSize.height = 100; 
+//var iconbutton4 = Export.add("iconbutton", undefined, undefined, {name: "iconbutton4", style: "toolbutton"}); 
+//    iconbutton4.text = "Ratio"; 
+//    iconbutton4.preferredSize.width = 100; 
+//    iconbutton4.preferredSize.height = 100; 
 
 // RESOLUTION
 // ==========
@@ -411,8 +567,7 @@ function selected_rbutton (rbuttons) {
     for (var i = 0; i < rbuttons.children.length; i++) {
         if (rbuttons.children[i].value == true) {
             var rbutton = rbuttons.children[i].text;
-            alert(rbutton);
-            return rbuttons.children[i].text;
+            return rbuttons.children[i].text.toLowerCase();
             }
         }
 }
@@ -431,12 +586,45 @@ function get_platform_list (platform_btns) {
     return platform_list;
 }
 
+radiobutton1.enabled = false;
+radiobutton2.enabled = false;
+radiobutton3.enabled = false;
+radiobutton4.enabled = false;
+iconbutton2.onClick = function() {
+    if (radiobutton1.enabled == false) {
+        radiobutton1.enabled = true;
+        radiobutton2.enabled = true;
+        radiobutton3.enabled = true;
+        radiobutton4.enabled = true;
+    }
+    else {
+        radiobutton1.enabled = false;
+        radiobutton2.enabled = false;
+        radiobutton3.enabled = false;
+        radiobutton4.enabled = false;
+    }
+};
+
 button1.onClick = function() {
     platform = get_platform_list ([iconbutton1, iconbutton2, iconbutton3]);
-    resolution = selected_rbutton (group1);
-    alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
-    alert(selected_rbutton (group1).toString());
+    resolution = [];
+    if (platform.indexOf("android") > -1) {
+        resolution = selected_rbutton (group1);
+        alert(resolution);
+    }
+    //alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
     exportAll();
+};
+
+button3.onClick = function() {
+    platform = get_platform_list ([iconbutton1, iconbutton2, iconbutton3]);
+    resolution = [];
+    if (platform.indexOf("android") > -1) {
+        resolution = selected_rbutton (group1);
+        alert(resolution);
+    }
+    //alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
+    exportSelected();
 };
 
 dialog.show();
