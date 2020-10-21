@@ -93,6 +93,38 @@ function scanLayersList(layers) {
     return lyrInfo;
 }
 
+function exportSubgroups(){
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+	// Stores saved layer info: name, coordinates, width and height
+	var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+
+	// Define pixels as unit of measurement
+	var defaultRulerUnits = preferences.rulerUnits;
+	preferences.rulerUnits = Units.PIXELS;
+
+    var selectLayers = getSelectedLayersId();
+    if (selectLayers == null || selectLayers.length == 0) {
+        alert("NO_LAYER_SELECTED");
+        return;
+    }
+
+    for (var i = 0; i < selectLayers.length; i++){
+        setSelectedLayers(selectLayers[i]);
+        var layer = activeDocument.activeLayer;
+        lyrInfo += recordLayerInfo(layer);
+        scan(layer);
+    }
+
+	// Resumes back to original ruler units
+	preferences.rulerUnits = defaultRulerUnits;
+	// Writes stored layer info into single file
+	writeFile(lyrInfo, originPath + "/out/");
+
+    app.activeDocument.activeHistoryState = savedState;
+}
+
 function setPlatform(newPlatform){
     platform = [];
     if (newPlatform.constructor != Array) {
@@ -109,7 +141,7 @@ function setPlatform(newPlatform){
 platform = ['android', 'macos'];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 resolution = ['xhdpi'];
-exportSelected();
+exportSubgroups();
 */
 ///////////////////////////////////////////////////////
 
