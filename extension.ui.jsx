@@ -93,6 +93,38 @@ function scanLayersList(layers) {
     return lyrInfo;
 }
 
+function exportSubgroups(){
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+	// Stores saved layer info: name, coordinates, width and height
+	var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+
+	// Define pixels as unit of measurement
+	var defaultRulerUnits = preferences.rulerUnits;
+	preferences.rulerUnits = Units.PIXELS;
+
+    var selectLayers = getSelectedLayersId();
+    if (selectLayers == null || selectLayers.length == 0) {
+        alert("NO_LAYER_SELECTED");
+        return;
+    }
+
+    for (var i = 0; i < selectLayers.length; i++){
+        setSelectedLayers(selectLayers[i]);
+        var layer = activeDocument.activeLayer;
+        lyrInfo += recordLayerInfo(layer);
+        scan(layer);
+    }
+
+	// Resumes back to original ruler units
+	preferences.rulerUnits = defaultRulerUnits;
+	// Writes stored layer info into single file
+	writeFile(lyrInfo, originPath + "/out/");
+
+    app.activeDocument.activeHistoryState = savedState;
+}
+
 function setPlatform(newPlatform){
     platform = [];
     if (newPlatform.constructor != Array) {
@@ -109,7 +141,7 @@ function setPlatform(newPlatform){
 platform = ['android', 'macos'];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 resolution = ['xhdpi'];
-exportSelected();
+exportSubgroups();
 */
 ///////////////////////////////////////////////////////
 
@@ -474,6 +506,7 @@ var statictext1 = dialog.add("statictext", undefined, undefined, {name: "statict
     statictext1.justify = "center"; 
     statictext1.alignment = ["center","top"]; 
 
+
 // MODE
 // ====
 var Mode = dialog.add("group", undefined, {name: "Mode"}); 
@@ -563,6 +596,12 @@ var radiobutton3 = group1.add("radiobutton", undefined, undefined, {name: "radio
 var radiobutton4 = group1.add("radiobutton", undefined, undefined, {name: "radiobutton4"}); 
     radiobutton4.text = "HDPI"; 
     
+ var statictext2 = dialog.add("statictext", undefined, undefined, {name: "status"});
+    statictext2.text = "Ready";
+    statictext2.preferredSize.width = 220;
+    statictext2.justify = "center";
+    statictext2.alignment = ["center", "bottom"];
+
 function selected_rbutton (rbuttons) {
     for (var i = 0; i < rbuttons.children.length; i++) {
         if (rbuttons.children[i].value == true) {
@@ -610,10 +649,31 @@ button1.onClick = function() {
     resolution = [];
     if (platform.indexOf("android") > -1) {
         resolution = selected_rbutton (group1);
-        alert(resolution);
+        if (resolution.length == 0) {
+            alert('Please select resolution for Android platform!');
+            return;
+        }
     }
     //alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
+    statictext2.text = "working";
     exportAll();
+    statictext2.text = "ready";
+};
+
+button2.onClick = function() {
+    platform = get_platform_list ([iconbutton1, iconbutton2, iconbutton3]);
+    resolution = [];
+    if (platform.indexOf("android") > -1) {
+        resolution = selected_rbutton (group1);
+        if (resolution.length == 0) {
+            alert('Please select resolution for Android platform!');
+            return;
+        }
+    }
+    //alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
+    statictext2.text = "working";
+    exportSubgroups ();
+    statictext2.text = "ready";
 };
 
 button3.onClick = function() {
@@ -621,10 +681,15 @@ button3.onClick = function() {
     resolution = [];
     if (platform.indexOf("android") > -1) {
         resolution = selected_rbutton (group1);
-        alert(resolution);
+        if (resolution.length == 0) {
+            alert('Please select resolution for Android platform!');
+            return;
+        }
     }
     //alert(get_platform_list ([iconbutton1, iconbutton2, iconbutton3]).toString());
+    statictext2.text = "working";
     exportSelected();
+    statictext2.text = "ready";
 };
 
 dialog.show();
