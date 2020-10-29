@@ -197,7 +197,11 @@ function saveLayer(lname){
     * but Adobe's ExtendedScript engine is out of date to support this method
     * prototype-function added atop
     */
-	if(platform == [] || platform.indexOf('ios') != -1){
+    if(platform == []){
+        alert('NO_PLATFORM_SELECTED');
+        return;
+    }
+	if(platform.indexOf('ios') != -1){
 	    if (!iosFolder.exists) iosFolder.create();
 
 		// save as Retina, i.e. the original size(dpi)
@@ -213,7 +217,7 @@ function saveLayer(lname){
 		resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 	}
 
-	if(platform == [] || platform.indexOf('android') != -1){
+	if(platform.indexOf('android') != -1){
 	    if (!androidFolder.exists) androidFolder.create();
 
 	    // save original size as XHDPI
@@ -223,7 +227,7 @@ function saveLayer(lname){
 	        SavePNG(saveXHDPI);
 	    }
 
-		if (resolution == undefined || resolution.indexOf('hdpi') != -1) {
+		if (resolution.indexOf('hdpi') != -1) {
 		    if (!androidHDPIFolder.exists) androidHDPIFolder.create();
 		    // resize canvas to HDPI
 		    resize(0.75*activeDocument.width.value, 0.75*activeDocument.height.value);
@@ -233,7 +237,7 @@ function saveLayer(lname){
 		    resize(4.0/3*activeDocument.width.value, 4.0/3*activeDocument.height.value);
 		}
 
-        if (resolution == undefined || resolution.indexOf('mdpi') != -1) {
+        if (resolution.indexOf('mdpi') != -1) {
    	        if (!androidMDPIFolder.exists) androidMDPIFolder.create();
 		    // resize canvas to MDPI
 		    resize(0.5*activeDocument.width.value, 0.5*activeDocument.height.value);
@@ -243,7 +247,7 @@ function saveLayer(lname){
 		    resize(2*activeDocument.width.value, 2*activeDocument.height.value);
 		}
 
-        if (resolution == undefined || resolution.indexOf('ldpi') != -1) {
+        if (resolution.indexOf('ldpi') != -1) {
             if (!androidLDPIFolder.exists) androidLDPIFolder.create();
 		    // resize canvas to LDPI
 		    resize(0.375*activeDocument.width.value, 0.375*activeDocument.height.value);
@@ -254,7 +258,7 @@ function saveLayer(lname){
 		}
 	}
 
-	if(platform == [] || platform.indexOf('macos') != -1){
+	if(platform.indexOf('macos') != -1){
 	    if (!macFolder.exists) macFolder.create();
 		var saveMac = File(macFolder + "/" + lname + ".png");
 		SavePNG(saveMac);

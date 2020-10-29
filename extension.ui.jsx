@@ -504,7 +504,7 @@ var statictext1 = dialog.add("statictext", undefined, undefined, {name: "statict
     statictext1.text = "ReCut & ReSlice Me"; 
     statictext1.preferredSize.width = 220; 
     statictext1.justify = "center"; 
-    statictext1.alignment = ["center","top"]; 
+    statictext1.alignment = ["center","top"];
 
 
 // MODE
