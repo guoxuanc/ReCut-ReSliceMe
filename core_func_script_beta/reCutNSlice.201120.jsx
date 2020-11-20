@@ -32,6 +32,8 @@ var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
 var platform = [];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 var resolution;
+// Sentient variable
+var saveLyrInfo = false;
     
 function exportAll(){
     if (!outFolder.exists) outFolder.create();
@@ -49,7 +51,9 @@ function exportAll(){
 	// Resumes back to original ruler units
 	preferences.rulerUnits = defaultRulerUnits;
 	// Writes stored layer info into single file
-	writeFile(lyrInfo, originPath + "/out/");
+	if (saveLyrInfo) {
+	    writeFile(lyrInfo, originPath + "/out/");
+	}
 
     app.activeDocument.activeHistoryState = savedState;
 }
@@ -76,7 +80,9 @@ function exportSelected(){
 	// Resumes back to original ruler units
 	preferences.rulerUnits = defaultRulerUnits;
 	// Writes stored layer info into single file
-	writeFile(lyrInfo, originPath + "/out/");
+	if (saveLyrInfo) {
+	    writeFile(lyrInfo, originPath + "/out/");
+    }
 
     app.activeDocument.activeHistoryState = savedState;
 }
@@ -120,7 +126,9 @@ function exportSubgroups(){
 	// Resumes back to original ruler units
 	preferences.rulerUnits = defaultRulerUnits;
 	// Writes stored layer info into single file
-	writeFile(lyrInfo, originPath + "/out/");
+	if (saveLyrInfo) {
+	    writeFile(lyrInfo, originPath + "/out/");
+    }
 
     app.activeDocument.activeHistoryState = savedState;
 }
