@@ -31,7 +31,7 @@ var macFolder = new Folder(originPath + "/out/" + fname + "_Mac_assets");
 // Array platform in ['ios', 'android', 'macos']
 var platform = [];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
-var resolution;
+var resolution = [];
 // Sentient variable
 var saveLyrInfo = false;
 
@@ -648,23 +648,44 @@ palette.onClose = function () {
 
 // Load config from UI
 function loadConfig() {
+    // init all config parameters
+    resolution = [];
+    platform = [];
     var platformBtns = [iosIcon, androidIcon, macosIcon];
     var platformChosen = [];
     for (var i = 0; i < platformBtns.length; i++) {
-        if (platformBtns[i].value == true) {
-            platformChosen.push(platformBtns[i].properties.name);
+        if (platformBtns[i].value === true) {
+            if (platformBtns[i].properties.name === 'iosIcon') {
+                platformChosen.push('ios');
+            } else if (platformBtns[i].properties.name === 'androidIcon') {
+                platformChosen.push('android');
+            } else if (platformBtns[i].properties.name === 'macosIcon') {
+                platformChosen.push('macos')
+            }
         }
     }
-    if (platformChosen.length == 0) {
+    if (platformChosen.length === 0) {
         alert('Please select at least one platform (iOS, Android, macOS)');
-        return;
+        return -1;
     }
-    if (platformChosen.indexOf("androidIcon") > -1) {
-        resolution = resolList.selection;
+    if (platformChosen.indexOf("android") > -1) {
+        //['xhdpi', 'hdpi', 'mdpi', 'ldpi']
+        if (resolList.selection.text === 'XHDPI') {
+                resolution.push('xhdpi');
+        } else if (resolList.selection.text === 'HDPI') {
+                resolution.push('hdpi');
+        } else if (resolList.selection.text === 'MDPI') {
+                resolution.push('mdpi');
+        } else if (resolList.selection.text === 'LDPI') {
+                resolution.push('ldpi');
+        }
+    } else {
+        resolution = [];
     }
     // statictext2.text = "working";
+    platform = platformChosen;
     saveLyrInfo = LayerInfo.value;
-    return;
+    return 0;
 }
 
 // progress bar
@@ -698,7 +719,11 @@ cutAll.onClick = function () {
     
     progress.message("Load configurations (step 1/2)");
     $.sleep(200);
-    loadConfig();
+    var returnVal = loadConfig();
+    if (returnVal == -1) {
+        progress.close ();
+        return;
+    }
     progress.increment();
     
     progress.message("Exporting files (step (2/2))");
@@ -707,7 +732,7 @@ cutAll.onClick = function () {
     progress.increment();
     
     progress.close();
-    alert('Done!');   
+    alert('Done!');
 }
 
 // cutSubgroups onClick listener
@@ -717,7 +742,11 @@ cutSubgroups.onClick = function () {
     
     progress.message("Load configurations (step 1/2)");
     $.sleep(200);
-    loadConfig();
+    var returnVal = loadConfig();
+    if (returnVal == -1) {
+        progress.close ();
+        return;
+    }
     progress.increment();
     
     progress.message("Exporting files (step (2/2))");
@@ -736,7 +765,11 @@ cutSelected.onClick = function () {
     
     progress.message("Load configurations (step 1/2)");
     $.sleep(200);
-    loadConfig();
+    var returnVal = loadConfig();
+    if (returnVal == -1) {
+        progress.close ();
+        return;
+    }
     progress.increment();
     
     progress.message("Exporting files (step (2/2))");
