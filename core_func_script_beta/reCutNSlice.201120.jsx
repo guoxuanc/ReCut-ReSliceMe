@@ -144,13 +144,13 @@ function setPlatform(newPlatform){
 };
 
 ///////////////////// TESTING ////////////////////////
-/*
+// /*
 // Array platform in ['ios', 'android', 'macos']
 platform = ['android', 'macos'];
 // Array resolution in ['xhdpi', 'hdpi', 'mdpi', 'ldpi']
 resolution = ['xhdpi'];
-exportSubgroups();
-*/
+exportAll();
+// */
 ///////////////////////////////////////////////////////
 
 // Scan layer sets to prepare for exporting
