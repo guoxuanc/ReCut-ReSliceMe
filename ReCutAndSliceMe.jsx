@@ -650,6 +650,25 @@ LayerInfo.value = saveLyrInfo;
 // ========
 // author: @weiwang; @guoxuanc
 
+/*
+*   NOTE:
+*   - The order of functions below matters,
+*     rearrangement may cause display bug
+*/
+
+// android onClick listener
+// disable androidResolution when android is not selected
+androidIcon.onClick = function () {
+    // if resolution is diabled, click android icon would enable it
+    if (androidResolution.enabled == false) {
+        androidResolution.enabled = true;
+        }
+    else {
+        // if resolution is enabled, click android icon again would disable it
+        androidResolution.enabled = false;
+        }
+}
+
 //sentinel variable
 var isDone = false;
 
@@ -730,22 +749,11 @@ function progress(steps) {
     w.show();
 }
 
-// android onClick listener
-// disable androidResolution when android is not selected
-androidIcon.onClick = function () {
-    if (androidResolution.enabled == false) {
-        androidResolution.enabled = true;
-        }
-    else {
-        androidResolution.enabled = false;
-        }
-}
-
 // cutAll onClick listener
 cutAll.onClick = function () {
     var steps = 3;
     progress(steps);
-    
+
     progress.message("Load configurations (step 1/2)");
     $.sleep(200);
     var returnVal = loadConfig();
@@ -754,12 +762,12 @@ cutAll.onClick = function () {
         return;
     }
     progress.increment();
-    
+
     progress.message("Exporting files (step (2/2))");
     exportAll();
     progress.increment();
     progress.increment();
-    
+
     progress.close();
     alert('Done!');
 }
@@ -768,7 +776,7 @@ cutAll.onClick = function () {
 cutSubgroups.onClick = function () {
     var steps = 3;
     progress(steps);
-    
+
     progress.message("Load configurations (step 1/2)");
     $.sleep(200);
     var returnVal = loadConfig();
@@ -777,21 +785,21 @@ cutSubgroups.onClick = function () {
         return;
     }
     progress.increment();
-    
+
     progress.message("Exporting files (step (2/2))");
     exportSubgroups ();
     progress.increment();
     progress.increment();
-    
+
     progress.close();
-    alert('Done!');   
+    alert('Done!');
 }
 
 // cutSelected onClick listener
 cutSelected.onClick = function () {
     var steps = 3;
     progress(steps);
-    
+
     progress.message("Load configurations (step 1/2)");
     $.sleep(200);
     var returnVal = loadConfig();
@@ -800,14 +808,14 @@ cutSelected.onClick = function () {
         return;
     }
     progress.increment();
-    
+
     progress.message("Exporting files (step (2/2))");
     exportSelected ();
     progress.increment();
     progress.increment();
-    
+
     progress.close();
-    alert('Done!');   
+    alert('Done!');
 }
 
 palette.show();
@@ -815,4 +823,3 @@ palette.show();
 while (isDone === false) {
     app.refresh(); // or, alternatively, waitForRedraw();
 }
-
