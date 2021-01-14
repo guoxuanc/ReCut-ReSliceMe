@@ -104,7 +104,7 @@ function scanLayersList(layers) {
         progress.message("preparing layers: " + layer.name);
         lyrInfo += recordLayerInfo(layer);
         progress.update(60);
-        prepare(layer, false, true);
+        if (prepare(layer, false, true) == -1 ) { continue; }
         progress.message("exporting layers: " + layer.name);
         saveLayer(layer.name);
         progress.update(100);
@@ -184,7 +184,10 @@ function scan(canvas) {
             progress.update(20);
             // Prepare layer for possible trim and resize defined by the Shape layer within it
             progress.message("preparing layer: " + layer.name);
-            prepare(layer, false, true);
+            if (prepare(layer, false, true) == -1){
+                // error occured
+                continue;
+            }
             progress.update(50);
             progress.message("exporting layer: " + layer.name);
             saveLayer(layer.name);
@@ -204,7 +207,7 @@ function scan(canvas) {
                     progress.update(20);
                     // Prepare layer for possible trim and resize defined by the Shape layer within it
                     progress.message("preparing " + layer.name + ": " + layer.layers[k].name);
-                    prepare(layer.layers[k], true, true);
+                    if (prepare(layer.layers[k], true, true) == -1 ) { continue; }
                     progress.update(50);
                     progress.message("exporting " + layer.name + ": " + layer.layers[k].name);
                     saveLayer(layer.name + "." + layer.layers[k].name);
@@ -226,7 +229,7 @@ function scan(canvas) {
             lyrInfo += recordLayerInfo(layer);
             progress.update(30);
             progress.message("preparing layer: " + canvas.artLayers[j].name);
-            prepare(layer, false, false);
+            if (prepare(layer, false, false) == -1 ) { continue; }
             progress.update(60);
             progress.message("exporting layer: " + canvas.artLayers[j].name);
             saveLayer(canvas.artLayers[j].name);
@@ -368,6 +371,7 @@ function hasRectBoundLayer(obj) {
 
 // prepare layer for exporting
 function prepare(layer, isBtn, mergeOpt) {
+    try{
     activeDocument.activeLayer = layer;
     // Duplicate passed layer to modify on it
     dupLayers();
@@ -395,6 +399,11 @@ function prepare(layer, isBtn, mergeOpt) {
     if (mergeOpt == undefined || mergeOpt == true) {
         activeDocument.mergeVisibleLayers();
     }
+    return 0;
+    } catch(e) {
+        //alert(e);
+        return -1;
+    }
 }
 
 // Resize layer to given width and height
@@ -416,12 +425,19 @@ function resize(width, height) {
 
 // return saved layer assets info
 function recordLayerInfo(layer) {
-    var x = (layer.bounds[0].value + layer.bounds[2].value) / 2;
-    var y = (layer.bounds[1].value + layer.bounds[3].value) / 2;
-    var width = layer.bounds[2].value - layer.bounds[0].value;
-    var height = layer.bounds[3].value - layer.bounds[1].value;
-    var info = layer.name + ": centered at (" + x + ", " + y + "), width: " + width + "px, height: " + height + "px. \n";
-    return info;
+    try {
+        var x = (layer.bounds[0].value + layer.bounds[2].value) / 2;
+        var y = (layer.bounds[1].value + layer.bounds[3].value) / 2;
+        var width = layer.bounds[2].value - layer.bounds[0].value;
+        var height = layer.bounds[3].value - layer.bounds[1].value;
+        var info = layer.name + ": centered at (" + x + ", " + y + "), width: " + width + "px, height: " + height + "px. \n";
+        return info;
+    }
+    catch(e) {
+        // when layer type is TEXT, error would resolve since it didn't have bounds property
+        // alert("Requires a layer targered");
+        return "object has no boundary to calculate layer position and other information. \n";
+    }
 }
 
 // save assets info into txt file
