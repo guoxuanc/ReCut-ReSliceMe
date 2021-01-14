@@ -45,7 +45,7 @@ function exportAll() {
     var savedState = app.activeDocument.activeHistoryState;
 
     // Stores saved layer info: name, coordinates, width and height
-    var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+    var lyrInfo = "";
 
     // Define pixels as unit of measurement
     var defaultRulerUnits = preferences.rulerUnits;
@@ -56,8 +56,8 @@ function exportAll() {
     // Resumes back to original ruler units
     preferences.rulerUnits = defaultRulerUnits;
     // Writes stored layer info into single file
-    if (saveLyrInfo) {
-        writeFile(lyrInfo, originPath + "/out/");
+    if (saveLyrInfo && lyrInfo != "") {
+        writeFile("ASSET NAME, COORDINATE, WIDTH, HEIGHT\n" + lyrInfo, originPath + "/out/");
     }
 
     app.activeDocument.activeHistoryState = savedState;
@@ -69,7 +69,7 @@ function exportSelected() {
     var savedState = app.activeDocument.activeHistoryState;
 
     // Stores saved layer info: name, coordinates, width and height
-    var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+    var lyrInfo = "";
 
     // Define pixels as unit of measurement
     var defaultRulerUnits = preferences.rulerUnits;
@@ -86,8 +86,8 @@ function exportSelected() {
     // Resumes back to original ruler units
     preferences.rulerUnits = defaultRulerUnits;
     // Writes stored layer info into single file
-    if (saveLyrInfo) {
-        writeFile(lyrInfo, originPath + "/out/");
+    if (saveLyrInfo && lyrInfo != "") {
+        writeFile("ASSET NAME, COORDINATE, WIDTH, HEIGHT\n" + lyrInfo, originPath + "/out/");
     }
 
     app.activeDocument.activeHistoryState = savedState;
@@ -96,11 +96,19 @@ function exportSelected() {
 function scanLayersList(layers) {
     var lyrInfo = "";
     for (var i = 0; i < layers.length; i++) {
+        progress.update(3);
+        progress.message("orgnizing layers...");
         setSelectedLayers(layers[i]);
         var layer = activeDocument.activeLayer;
+        progress.update(10);
+        progress.message("preparing layers: " + layer.name);
         lyrInfo += recordLayerInfo(layer);
+        progress.update(60);
         prepare(layer, false, true);
+        progress.message("exporting layers: " + layer.name);
         saveLayer(layer.name);
+        progress.update(100);
+        $.sleep(300);
     }
     return lyrInfo;
 }
@@ -111,7 +119,7 @@ function exportSubgroups() {
     var savedState = app.activeDocument.activeHistoryState;
 
     // Stores saved layer info: name, coordinates, width and height
-    var lyrInfo = "ASSET NAME, COORDINATE, WIDTH, HEIGHT\n";
+    var lyrInfo = "";
 
     // Define pixels as unit of measurement
     var defaultRulerUnits = preferences.rulerUnits;
@@ -126,15 +134,14 @@ function exportSubgroups() {
     for (var i = 0; i < selectLayers.length; i++) {
         setSelectedLayers(selectLayers[i]);
         var layer = activeDocument.activeLayer;
-        lyrInfo += recordLayerInfo(layer);
-        scan(layer);
+        lyrInfo += scan(layer);
     }
 
     // Resumes back to original ruler units
     preferences.rulerUnits = defaultRulerUnits;
     // Writes stored layer info into single file
-    if (saveLyrInfo) {
-        writeFile(lyrInfo, originPath + "/out/");
+    if (saveLyrInfo && lyrInfo != "") {
+        writeFile("ASSET NAME, COORDINATE, WIDTH, HEIGHT\n" + lyrInfo, originPath + "/out/");
     }
 
     app.activeDocument.activeHistoryState = savedState;
@@ -167,26 +174,43 @@ function scan(canvas) {
 
     // Scan layer group inside the canvas
     for (var i = 0; i < canvas.layerSets.length; i++) {
+        progress.update(10);
         var layer = canvas.layerSets[i];
         // Check if layer name ends with "@", which signifies for export layer
         if (layer.name.substr(-1) == "@") {
+            progress.message("scanning layer: " + layer.name);
             // Collect about-to-be-exported layer information
             lyrInfo += recordLayerInfo(layer);
+            progress.update(20);
             // Prepare layer for possible trim and resize defined by the Shape layer within it
+            progress.message("preparing layer: " + layer.name);
             prepare(layer, false, true);
+            progress.update(50);
+            progress.message("exporting layer: " + layer.name);
             saveLayer(layer.name);
+            progress.update(100);
+            $.sleep(200);
         } else if (layer.name.slice(-4) == "_BTN") {
+            progress.message("scanning button: " + layer.name);
             // current layer is a Button group
             // Collect about-to-be-exported layer information
             lyrInfo += recordLayerInfo(layer);
+            progress.update(15);
             var regex = /(normal|hover|disabled|pressed|selected|clicked)/;
             // iterate every group inside _BTN group
             for (var k = 0; k < layer.layers.length; k++) {
+                progress.message("scanning " + layer.name + " -> " + layer.layers[k].name);
                 if (layer.layers[k].name.match(regex) != null) {
+                    progress.update(20);
                     // Prepare layer for possible trim and resize defined by the Shape layer within it
+                    progress.message("preparing " + layer.name + ": " + layer.layers[k].name);
                     prepare(layer.layers[k], true, true);
+                    progress.update(50);
+                    progress.message("exporting " + layer.name + ": " + layer.layers[k].name);
                     saveLayer(layer.name + "." + layer.layers[k].name);
                 }
+                progress.update(100);
+                $.sleep(200);
             }
         } else {
             // Recursive
@@ -196,11 +220,20 @@ function scan(canvas) {
 
     // Find art layers in current group whose name ends with "@"
     for (var j = 0; j < canvas.artLayers.length; j++) {
+        progress.update(20);
+        progress.message("scanning layer: " + canvas.artLayers[j].name);
         if (canvas.artLayers[j].name.substr(-1) == "@") {
             lyrInfo += recordLayerInfo(layer);
+            progress.update(30);
+            progress.message("preparing layer: " + canvas.artLayers[j].name);
             prepare(layer, false, false);
+            progress.update(60);
+            progress.message("exporting layer: " + canvas.artLayers[j].name);
             saveLayer(canvas.artLayers[j].name);
         }
+        progress.update(100);
+        progress.message("Complete");
+        $.sleep(200);
     }
 
     return lyrInfo;
@@ -634,7 +667,7 @@ var resolList_array = ["XHDPI", "HDPI", "MDPI", "LDPI"];
 var resolList = androidResolution.add("dropdownlist", undefined, undefined, { name: "resolList", items: resolList_array });
 resolList.selection = 0;
 // default this group to disabled, enable it when android is selected
-androidResolution.enabled = false;
+// androidResolution.enabled = false;
 
 // OTHER
 // =====
@@ -652,12 +685,14 @@ LayerInfo.value = saveLyrInfo;
 
 /*
 *   NOTE:
-*   - The order of functions below matters,
-*     rearrangement may cause display bug
+*   - uncomment android inClick listerner would block display of Progress Bar contents
+*     suspect of Adobe's palette display bug
 */
 
 // android onClick listener
 // disable androidResolution when android is not selected
+/*
+androidResolution.enabled = false;
 androidIcon.onClick = function () {
     // if resolution is diabled, click android icon would enable it
     if (androidResolution.enabled == false) {
@@ -668,20 +703,7 @@ androidIcon.onClick = function () {
         androidResolution.enabled = false;
         }
 }
-
-//sentinel variable
-var isDone = false;
-
-waitForRedraw = function () {
-    var d;
-    d = new ActionDescriptor();
-    d.putEnumerated(s2t('state'), s2t('state'), s2t('redrawComplete'));
-    return executeAction(s2t('wait'), d, DialogModes.NO);
-};
-
-palette.onClose = function () {
-    return isDone = true;
-};
+*/
 
 // Load config from UI
 function loadConfig() {
@@ -730,8 +752,9 @@ function progress(steps) {
     var b;
     var t;
     var w;
-    w = new Window("palette", "Progress", undefined, { closeButton: false });
+    w = new Window("palette", "Progress...", undefined, { closeButton: false });
     t = w.add("statictext");
+    w.active = true;
     t.preferredSize = [450, -1]; // 450 pixels wide, default height.
     if (steps) {
         b = w.add("progressbar", undefined, 0, steps);
@@ -740,8 +763,8 @@ function progress(steps) {
     progress.close = function () {
         w.close();
     };
-    progress.increment = function () {
-        b.value++;
+    progress.update = function (val) {
+        b.value = val;
     };
     progress.message = function (message) {
         t.text = message;
@@ -751,74 +774,158 @@ function progress(steps) {
 
 // cutAll onClick listener
 cutAll.onClick = function () {
-    var steps = 3;
-    progress(steps);
+    progress(100);
 
-    progress.message("Load configurations (step 1/2)");
+    progress.message("Load configurations...");
     $.sleep(200);
-    var returnVal = loadConfig();
-    if (returnVal == -1) {
+
+    if (loadConfig() == -1) {
         progress.close ();
         return;
     }
-    progress.increment();
+    progress.update(0);
 
-    progress.message("Exporting files (step (2/2))");
-    exportAll();
-    progress.increment();
-    progress.increment();
+    //exportAll();
+
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+    // Stores saved layer info: name, coordinates, width and height
+    var lyrInfo = "";
+
+    // Define pixels as unit of measurement
+    var defaultRulerUnits = preferences.rulerUnits;
+    preferences.rulerUnits = Units.PIXELS;
+
+    progress.message("Exporting files");
+    lyrInfo += scan(doc);
+
+    // Resumes back to original ruler units
+    preferences.rulerUnits = defaultRulerUnits;
+    // Writes stored layer info into single file
+    if (saveLyrInfo && lyrInfo != "") {
+        writeFile("ASSET NAME, COORDINATE, WIDTH, HEIGHT\n" + lyrInfo, originPath + "/out/");
+    }
 
     progress.close();
     alert('Done!');
+
+    app.activeDocument.activeHistoryState = savedState;
+
 }
 
 // cutSubgroups onClick listener
 cutSubgroups.onClick = function () {
-    var steps = 3;
-    progress(steps);
+    progress(100);
 
-    progress.message("Load configurations (step 1/2)");
+    progress.message("Load configurations...");
     $.sleep(200);
-    var returnVal = loadConfig();
-    if (returnVal == -1) {
+
+    if (loadConfig() == -1) {
         progress.close ();
         return;
     }
-    progress.increment();
+    progress.update(0);
 
-    progress.message("Exporting files (step (2/2))");
-    exportSubgroups ();
-    progress.increment();
-    progress.increment();
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+    // Stores saved layer info: name, coordinates, width and height
+    var lyrInfo = "";
+
+    // Define pixels as unit of measurement
+    var defaultRulerUnits = preferences.rulerUnits;
+    preferences.rulerUnits = Units.PIXELS;
+
+    var selectLayers = getSelectedLayersId();
+    if (selectLayers == null || selectLayers.length == 0) {
+        progress.close();
+        alert("NO_LAYER_SELECTED");
+        return;
+    }
+
+    for (var i = 0; i < selectLayers.length; i++) {
+        progress.update(5);
+        setSelectedLayers(selectLayers[i]);
+        var layer = activeDocument.activeLayer;
+        lyrInfo += scan(layer);
+    }
+
+
+    // Resumes back to original ruler units
+    preferences.rulerUnits = defaultRulerUnits;
+    // Writes stored layer info into single file
+    if (saveLyrInfo && lyrInfo != "") {
+        writeFile("ASSET NAME, COORDINATE, WIDTH, HEIGHT\n" + lyrInfo, originPath + "/out/");
+    }
 
     progress.close();
     alert('Done!');
+
+    app.activeDocument.activeHistoryState = savedState;
+
 }
 
 // cutSelected onClick listener
 cutSelected.onClick = function () {
-    var steps = 3;
-    progress(steps);
+    progress(100);
 
-    progress.message("Load configurations (step 1/2)");
+    progress.message("Load configurations...");
     $.sleep(200);
-    var returnVal = loadConfig();
-    if (returnVal == -1) {
+
+    if (loadConfig() == -1) {
         progress.close ();
         return;
     }
-    progress.increment();
+    progress.update(2);
 
-    progress.message("Exporting files (step (2/2))");
-    exportSelected ();
-    progress.increment();
-    progress.increment();
+    if (!outFolder.exists) outFolder.create();
+    var savedState = app.activeDocument.activeHistoryState;
+
+    // Stores saved layer info: name, coordinates, width and height
+    var lyrInfo = "";
+
+    // Define pixels as unit of measurement
+    var defaultRulerUnits = preferences.rulerUnits;
+    preferences.rulerUnits = Units.PIXELS;
+
+    var selectLayers = getSelectedLayersId();
+    if (selectLayers == null || selectLayers.length == 0) {
+        progress.close();
+        alert("NO_LAYER_SELECTED");
+        return;
+    }
+
+    lyrInfo += scanLayersList(selectLayers);
+
+    // Resumes back to original ruler units
+    preferences.rulerUnits = defaultRulerUnits;
+    // Writes stored layer info into single file
+    if (saveLyrInfo && lyrInfo != "") {
+        writeFile("ASSET NAME, COORDINATE, WIDTH, HEIGHT\n" + lyrInfo, originPath + "/out/");
+    }
 
     progress.close();
     alert('Done!');
+
+    app.activeDocument.activeHistoryState = savedState;
 }
 
 palette.show();
+
+//sentinel variable
+var isDone = false;
+
+palette.onClose = function () {
+    return isDone = true;
+};
+
+waitForRedraw = function () {
+    var d;
+    d = new ActionDescriptor();
+    d.putEnumerated(s2t('state'), s2t('state'), s2t('redrawComplete'));
+    return executeAction(s2t('wait'), d, DialogModes.NO);
+};
 
 while (isDone === false) {
     app.refresh(); // or, alternatively, waitForRedraw();
