@@ -436,7 +436,7 @@ function recordLayerInfo(layer) {
     catch(e) {
         // when layer type is TEXT, error would resolve since it didn't have bounds property
         // alert("Requires a layer targered");
-        return "object has no boundary to calculate layer position and other information. \n";
+        return layer.name + " object has no boundary to calculate layer position and other information. \n";
     }
 }
 
