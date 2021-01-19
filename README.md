@@ -7,7 +7,7 @@ This is an ExtendScript (Adobe’s version of JavaScript, but outdated) file (us
 
 This script can be programmed into a Flash based extension to support Photoshop CS6 and below, or HTML5 based extension to support Photosho CC series. 
 
-Additional tools (with extension builder installed on Adobe’s Flash Builder) are needed for Flash based extension. Since Adobe has stopped support of Flash, so it might not be feasible.
+Additional tools (with extension builder installed on Adobe’s Flash Builder) are needed for Flash based extension. Since Adobe has stopped support of Flash, it might not be feasible.
 
 —
 USAGE:
